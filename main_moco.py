@@ -338,6 +338,7 @@ def main_worker(gpu, ngpus_per_node, args):
     ]
 
     test_aug = [
+        transforms.RandomCrop(224),
         transforms.ToTensor(),
         normalize
     ]
