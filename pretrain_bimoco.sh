@@ -10,5 +10,5 @@ python main_moco.py \
   --moco-t 0.2 \
   --amp-opt-level O1 \
   --save-dir "output/kuzikus/mocov2/bimoco-geo-color-epochs200/" \
-  --dist-url 'tcp://localhost:10003' --multiprocessing-distributed --world-size 1 --rank 0 \
+  --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --world-size 1 --rank 0 \
   '/home/xiaochen/pretrain_dataset_256_seed11369'

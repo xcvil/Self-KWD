@@ -515,7 +515,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
                 output, target, output2, target2 = model(im_q=images[0], im_k=images[1], im_q2=images[2])
                 loss = criterion(output, target)/2 + criterion(output2, target2)/2
         else: # Original MoCo w/o mixup
-            print('Using Kaiming MoCo')
+            # print('Using Kaiming MoCo')
             if args.gpu is not None:
                 images[0] = images[0].cuda(args.gpu, non_blocking=True)
                 images[1] = images[1].cuda(args.gpu, non_blocking=True)
