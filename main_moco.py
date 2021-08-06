@@ -385,11 +385,11 @@ def main_worker(gpu, ngpus_per_node, args):
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
 
-    memory_dataset = datasets.ImageFolder(memdir, loader.TwoCropsTransform(transforms.Compose(test_aug)))
+    memory_dataset = datasets.ImageFolder(memdir, transforms.Compose(test_aug))
     memory_loader = torch.utils.data.DataLoader(memory_dataset, batch_size=args.batch_size, shuffle=False,
                                                 num_workers=2, pin_memory=True)
 
-    test_dataset = datasets.ImageFolder(testdir, loader.TwoCropsTransform(transforms.Compose(test_aug)))
+    test_dataset = datasets.ImageFolder(testdir, transforms.Compose(test_aug))
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=2,
                                               pin_memory=True)
 
@@ -404,7 +404,7 @@ def main_worker(gpu, ngpus_per_node, args):
         # train for one epoch
         train_loss = train(train_loader, model, criterion, optimizer, epoch, args)
         results['train_loss'].append(train_loss)
-        test_acc_1 = test(model.encoder_q, memory_loader, test_loader, epoch, args)
+        test_acc_1 = test(model.module.encoder_q, memory_loader, test_loader, epoch, args)
         results['test_acc@1'].append(test_acc_1)
         # save statistics
         data_frame = pd.DataFrame(data=results, index=range(args.start_epoch + 1, epoch + 2))
@@ -469,7 +469,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
                     loss_m = lam * criterion(output, target) + (1 - lam) * criterion(output2, target2)
                     if args.replace:
                         loss = loss_m
-                        print('replace the loss with loss_m')
+                        # print('replace the loss with loss_m')
                     else:
                         # compute output
                         output, target, output2, target2 = model(im_q=images[0], im_k=images[1], im_q2=images[2])
