@@ -94,8 +94,6 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'multi node data parallel training')
 parser.add_argument('--save-dir', default='', type=str, metavar='PATH',
                     help='path to save checkpoint (default: none)')
-parser.add_argument('--knn-data', default='', type=str, metavar='PATH',
-                    help='path to dataset of KNN')
 
 # moco specific configs:
 parser.add_argument('--bimoco', action='store_true',
@@ -131,6 +129,12 @@ parser.add_argument('--rui', action='store_true',
 # options for mix precision training
 parser.add_argument('--amp-opt-level', type=str, default='O0', choices=['O0', 'O1', 'O2'],
                     help='mixed precision opt level, if O0, no amp is used')
+
+# knn monitor
+parser.add_argument('--knn-k', default=200, type=int, help='k in kNN monitor')
+parser.add_argument('--knn-t', default=0.1, type=float, help='softmax temperature in kNN monitor; could be different with moco-t')
+parser.add_argument('--knn-data', default='', type=str, metavar='PATH',
+                    help='path to dataset of KNN')
 
 def main():
     global args
