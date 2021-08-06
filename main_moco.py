@@ -94,7 +94,6 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'multi node data parallel training')
 parser.add_argument('--save-dir', default='', type=str, metavar='PATH',
                     help='path to save checkpoint (default: none)')
-parser.add_argument('--results-dir', default='', type=str, metavar='PATH', help='path to cache (default: none)')
 parser.add_argument('--knn-data', default='', type=str, metavar='PATH',
                     help='path to dataset of KNN')
 
@@ -136,9 +135,6 @@ parser.add_argument('--amp-opt-level', type=str, default='O0', choices=['O0', 'O
 def main():
     global args
     args = parser.parse_args()
-
-    if args.results_dir == '':
-        args.results_dir = './cache-' + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-kmoco")
 
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
@@ -399,9 +395,6 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # logging
     results = {'train_loss': [], 'test_acc@1': []}
-    # dump args
-    with open(args.results_dir + '/args.json', 'w') as fid:
-        json.dump(args.__dict__, fid, indent=2)
 
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -415,7 +408,7 @@ def main_worker(gpu, ngpus_per_node, args):
         results['test_acc@1'].append(test_acc_1)
         # save statistics
         data_frame = pd.DataFrame(data=results, index=range(args.start_epoch + 1, epoch + 2))
-        data_frame.to_csv(args.results_dir + '/log.csv', index_label='epoch')
+        data_frame.to_csv(args.save_dir + 'log.csv', index_label='epoch')
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
