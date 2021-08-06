@@ -399,8 +399,6 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # logging
     results = {'train_loss': [], 'test_acc@1': []}
-    if not os.path.exists(args.results_dir):
-        os.mkdir(args.results_dir)
     # dump args
     with open(args.results_dir + '/args.json', 'w') as fid:
         json.dump(args.__dict__, fid, indent=2)
