@@ -5,7 +5,7 @@ python main_moco.py \
   --lr ${lr} \
   --workers 2 \
   --batch-size 64 \
-  --moco-k 65536 \
+  --moco-k 4096 \
   --bimoco --cos --mlp \
   --moco-t 0.2 \
   --amp-opt-level O1 \

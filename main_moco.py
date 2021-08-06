@@ -116,6 +116,8 @@ parser.add_argument('--aug-color-only', action='store_true',
                     help='use only color data augmentation')
 parser.add_argument('--aug-geo', action='store_true',
                     help='use only geometric data augmentation')
+parser.add_argument('--geo-plus', action='store_true',
+                    help='use only geometric data augmentation')
 parser.add_argument('--cos', action='store_true',
                     help='use cosine lr schedule')
 
@@ -372,10 +374,34 @@ def main_worker(gpu, ngpus_per_node, args):
                                           transforms.Compose(augmentation)))
             print('Using BiMoCo with Geo and Color transformation')
         else:
-            train_dataset = datasets.ImageFolder(
-                traindir,
-                loader.TwoCropsTransform(transforms.Compose(augmentation)))
-            print('Using MoCo v2')
+            if args.geo_plus:
+                geo_plus_augmentation = [
+                    transforms.RandomCrop(224),
+                    transforms.RandomApply([
+                        transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
+                    ], p=0.8),
+                    transforms.RandomGrayscale(p=0.2),
+                    transforms.RandomApply([loader.GaussianBlur([.1, 2.])], p=0.5),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomApply([
+                        transforms.RandomRotation([90, 90]),
+                    ], p=0.5),
+                    transforms.RandomApply([
+                        transforms.RandomRotation([180, 180]),
+                    ], p=0.5),
+                    transforms.ToTensor(),
+                    normalize
+                ]
+
+                train_dataset = datasets.ImageFolder(
+                    traindir,
+                    loader.TwoCropsTransform(transforms.Compose(geo_plus_augmentation)))
+                print('Using MoCo v2 with a geo-plus augmentation')
+            else:
+                train_dataset = datasets.ImageFolder(
+                    traindir,
+                    loader.TwoCropsTransform(transforms.Compose(augmentation)))
+                print('Using MoCo v2')
 
 
     if args.distributed:
@@ -604,7 +630,6 @@ def knn_predict(feature, feature_bank, feature_labels, classes, knn_k, knn_t):
 
     pred_labels = pred_scores.argsort(dim=-1, descending=True)
     return pred_labels
-
 
 
 def save_checkpoint(state, is_best, save_dir='output/imagenet/', filename='checkpoint.pth.tar', epoch=0):
