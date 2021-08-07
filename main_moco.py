@@ -98,6 +98,8 @@ parser.add_argument('--save-dir', default='', type=str, metavar='PATH',
 # moco specific configs:
 parser.add_argument('--bimoco', action='store_true',
                     help='use two branches MoCo')
+parser.add_argument('--bimoco-gamma', default=0.5, type=float,
+                    help='fraction of MoCo v2 loss')
 parser.add_argument('--moco-dim', default=128, type=int,
                     help='feature dimension (default: 128)')
 parser.add_argument('--moco-k', default=65536, type=int,
@@ -365,14 +367,14 @@ def main_worker(gpu, ngpus_per_node, args):
             loader.TwoCropsTransform(transforms.Compose(geo_augmentation)))
         print('Using MoCo v2 with only geometric augmentation')
     else:
-        if args.bimoco:
+        if args.bimoco or args.mixup:
             train_dataset = datasets.ImageFolder(
                 traindir,
                 loader.ThreeCropsTransform(transforms.Compose(base_augmentation),
                                           transforms.Compose(geo_augmentation),
                                           transforms.Compose(key_augmentation),
                                           transforms.Compose(augmentation)))
-            print('Using BiMoCo with Geo and Color transformation')
+            print('Using BiMoCo/MoCo-mixup with Geo and Color transformation')
         else:
             if args.geo_plus:
                 geo_plus_augmentation = [
@@ -402,7 +404,6 @@ def main_worker(gpu, ngpus_per_node, args):
                     traindir,
                     loader.TwoCropsTransform(transforms.Compose(augmentation)))
                 print('Using MoCo v2')
-
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -504,44 +505,52 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
                     else:
                         # compute output
                         output, target, output2, target2 = model(im_q=images[0], im_k=images[1], im_q2=images[2])
-                        loss = criterion(output, target) / 2 + criterion(output2, target2) / 2
+                        loss = (1 - args.bimoco_gamma) * criterion(output, target) + args.bimoco_gamma * criterion(output2, target2)
                         loss += loss_m
                 else:
                     # compute output
                     output, target, output2, target2 = model(im_q=images[0], im_k=images[1], im_q2=images[2])
-                    loss = criterion(output, target) / 2 + criterion(output2, target2) / 2
+                    loss = (1 - args.bimoco_gamma) * criterion(output, target) + args.bimoco_gamma * criterion(output2, target2)
             else:
                 # compute output
                 output, target, output2, target2 = model(im_q=images[0], im_k=images[1], im_q2=images[2])
-                loss = criterion(output, target)/2 + criterion(output2, target2)/2
-        else: # Original MoCo w/o mixup
+                loss = (1 - args.bimoco_gamma) * criterion(output, target) + args.bimoco_gamma * criterion(output2, target2)
+        else: # Original MoCo with/without mixup
             # print('Using Kaiming MoCo')
             if args.gpu is not None:
                 images[0] = images[0].cuda(args.gpu, non_blocking=True)
                 images[1] = images[1].cuda(args.gpu, non_blocking=True)
+                if args.mixup:
+                    images[2] = images[2].cuda(args.gpu, non_blocking=True)
             if args.mixup:
                 prob = np.random.rand(1)
                 lam = np.random.beta(1.0, 1.0)
-                images_reverse = torch.flip(images[0], (0,))
+                images_reverse = torch.flip(images[2], (0,))
                 # mixed_rot_color = 0.5 * images[0] + 0.5 * images[2]
                 if prob < args.mixup_p:
-                    # global-level mixtures
-                    mixed_images = lam * images[0] + (1 - lam) * images_reverse  # q1 branch mini-batch reverse mixup
-                    # mixed_images_flip = torch.flip(mixed_images, (0,))
-                    mixed_images_flip = torch.flip(mixed_images, (0,))
+                    if args.rui:
+                        mixed_images = lam * images[0] + (1 - lam) * images[1]
+                        mixed_images_flip = lam * images[0] + (1 - lam) * images[2]
+                    else:
+                        # global-level mixtures
+                        mixed_images = lam * images[2] + (
+                                    1 - lam) * images_reverse  # q1 branch mini-batch reverse mixup
+                        # mixed_images_flip = torch.flip(mixed_images, (0,))
+                        mixed_images_flip = torch.flip(mixed_images, (0,))
                     output, target = model(im_q=mixed_images, im_k=images[1])
                     output2, target2 = model(im_q=mixed_images_flip, im_k=images[1])
                     loss_m = lam * criterion(output, target) + (1 - lam) * criterion(output2, target2)
                     if args.replace:
                         loss = loss_m
+                        # print('replace the loss with loss_m')
                     else:
                         # compute output
-                        output, target = model(im_q=images[0], im_k=images[1])
+                        output, target = model(im_q=images[2], im_k=images[1]) # MoCo v2
                         loss = criterion(output, target)
                         loss += loss_m
                 else:
                     # compute output
-                    output, target = model(im_q=images[0], im_k=images[1])
+                    output, target = model(im_q=images[2], im_k=images[1])  # MoCo v2
                     loss = criterion(output, target)
             else:
                 # compute output
