@@ -486,13 +486,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
             if args.mixup:
                 prob = np.random.rand(1)
                 lam = np.random.beta(1.0, 1.0)
-                images_reverse = torch.flip(images[2], (0,))
-                # mixed_rot_color = 0.5 * images[0] + 0.5 * images[2]
                 if prob < args.mixup_p:
                     if args.rui:
                         mixed_images = lam * images[0] + (1 - lam) * images[1]
                         mixed_images_flip = lam * images[0] + (1 - lam) * images[2]
                     else:
+                        images_reverse = torch.flip(images[2], (0,))
                         # global-level mixtures
                         mixed_images = lam * images[2] + (1 - lam) * images_reverse # q1 branch mini-batch reverse mixup
                         # mixed_images_flip = torch.flip(mixed_images, (0,))
@@ -525,13 +524,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
             if args.mixup:
                 prob = np.random.rand(1)
                 lam = np.random.beta(1.0, 1.0)
-                images_reverse = torch.flip(images[2], (0,))
-                # mixed_rot_color = 0.5 * images[0] + 0.5 * images[2]
                 if prob < args.mixup_p:
                     if args.rui:
                         mixed_images = lam * images[0] + (1 - lam) * images[1]
                         mixed_images_flip = lam * images[0] + (1 - lam) * images[2]
                     else:
+                        images_reverse = torch.flip(images[2], (0,))
                         # global-level mixtures
                         mixed_images = lam * images[2] + (
                                     1 - lam) * images_reverse  # q1 branch mini-batch reverse mixup
