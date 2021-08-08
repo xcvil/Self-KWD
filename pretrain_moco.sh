@@ -7,9 +7,10 @@ python main_moco.py \
   --batch-size 64 \
   --moco-k 4096 \
   --cos --mlp \
+  -knn-t 100 \
   --moco-t 0.2 \
   --amp-opt-level O1 \
-  --knn-data "/home/xiaochen/KWD-LT-0.1" \
-  --save-dir "output/kuzikus/mocov2/moco-v2-epochs200/" \
+  --knn-data "/home/xiaochen/KWD-LT" \
+  --save-dir "output/kuzikus/mocov2/moco-v2-epochs200-LT/" \
   --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --world-size 1 --rank 0 \
-  '/home/xiaochen/pretrain_dataset_256_seed11369'
+  '/home/xiaochen/KWD-LT/train'

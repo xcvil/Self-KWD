@@ -468,7 +468,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         [batch_time, data_time, losses, top1, top5],
         prefix="Epoch: [{}]".format(epoch))
     if args.mixup:
-        print("Using Mixup")
+        if args.bimoco:
+            print("Using BiMoCo Mixup")
     # switch to train mode
     model.train()
 
