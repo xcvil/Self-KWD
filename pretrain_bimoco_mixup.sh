@@ -7,6 +7,7 @@ python main_moco.py \
   --batch-size 64 \
   --moco-k 4096 \
   --bimoco --mixup --cos --mlp --rui --replace \
+  --bimoco-gamma 0.5 \
   --mixup-p 0.3 \
   --moco-t 0.2 \
   --amp-opt-level O1 \
