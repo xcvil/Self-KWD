@@ -18,6 +18,7 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
+import torch.nn.functional as F
 
 import json
 
@@ -40,7 +41,7 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
-parser.add_argument('--gpu', default=None, type=int,
+parser.add_argument('--gpu', default=0, type=int,
                     help='GPU id to use.')
 parser.add_argument('--save-dir', default='', type=str, metavar='PATH',
                     help='path to save checkpoint (default: none)')
@@ -160,7 +161,7 @@ def main_worker(gpu, args):
 
     for i in range(600):
         args.knn_k += 1
-        test_acc_1 = test(model.module.encoder_q, memory_loader, test_loader, epoch, args)
+        test_acc_1 = test(model, memory_loader, test_loader, epoch, args)
         results['knn-k'].append(args.knn_k)
         results['test_acc@1'].append(test_acc_1)
         # save statistics
