@@ -159,13 +159,13 @@ def main_worker(gpu, args):
     # logging
     results = {'knn-k': [], 'test_acc@1': []}
 
-    for i in range(600):
+    for i in range(0,600):
         args.knn_k += 1
-        test_acc_1 = test(model, memory_loader, test_loader, epoch, args)
+        test_acc_1 = test(model, memory_loader, test_loader, i, args)
         results['knn-k'].append(args.knn_k)
         results['test_acc@1'].append(test_acc_1)
         # save statistics
-        data_frame = pd.DataFrame(data=results, index=range(args.start_epoch + 1, epoch + 2))
+        data_frame = pd.DataFrame(data=results, index=range(1, i + 2))
         data_frame.to_csv(args.save_dir + 'log.csv', index_label='epoch')
 
 # test using a knn monitor
@@ -195,7 +195,7 @@ def test(model, memory_data_loader, test_data_loader, epoch, args):
             total_num += data.size(0)
             total_top1 += (pred_labels[:, 0] == target).float().sum().item()
             test_bar.set_description(
-                'Test Epoch: [{}/{}] Acc@1:{:.2f}%'.format(epoch, args.epochs, total_top1 / total_num * 100))
+                'Test Epoch: [{}/{}] Acc@1:{:.2f}%'.format(epoch, 600, total_top1 / total_num * 100))
 
     return total_top1 / total_num * 100
 
