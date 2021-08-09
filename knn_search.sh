@@ -4,7 +4,7 @@ python knn_search.py \
   --workers 2 \
   --resume '/home/xiaochen/journal_output/bimoco-mixup0.3-rui-replace-epochs200-LT/checkpoint_0199.pth.tar' \
   --save-dir "output/features/" \
-  --bimoco \
+  --bimoco --mlp \
   --moco-k 4096 \
   --moco-t 0.1 \
   --moco-m 0.99 \

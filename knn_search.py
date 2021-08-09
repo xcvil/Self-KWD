@@ -272,15 +272,19 @@ def main_worker(gpu, ngpus_per_node, args):
                                                 num_workers=2, pin_memory=True)
 
     test_dataset = datasets.ImageFolder(testdir, transforms.Compose(test_aug))
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=2,
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=2,
                                               pin_memory=True)
+
+    instfe, labelfe = encode(test_loader, model, args)
+    np.save(args.save_dir + 'inst_feat.npy', instfe)
+    np.save(args.save_dir + 'label.npy', labelfe)
 
     # logging
     results = {'knn-k': [], 'test_acc@1': []}
 
     for i in range(0,600):
         args.knn_k += 1
-        test_acc_1 = test(model, memory_loader, test_loader, i, args)
+        test_acc_1 = test(model.module.encoder_q, memory_loader, test_loader, i, args)
         results['knn-k'].append(args.knn_k)
         results['test_acc@1'].append(test_acc_1)
         # save statistics
@@ -339,6 +343,29 @@ def knn_predict(feature, feature_bank, feature_labels, classes, knn_k, knn_t):
 
     pred_labels = pred_scores.argsort(dim=-1, descending=True)
     return pred_labels
+
+def encode(train_loader, model, args):
+    # switch to train mode
+    model.eval()
+    num_data = len(train_loader)
+    inst_feat = np.zeros((num_data, 128, 1, 1)) # store the features
+    label_list = np.zeros((num_data,))
+
+    for i, (images, labels) in enumerate(train_loader):
+        # measure data loading time
+
+        if args.gpu is not None:
+            images = images.cuda(args.gpu, non_blocking=True)
+
+        # compute output
+        feature = model(images)
+        feature = F.normalize(feature, dim=1)
+        instDis = feature.cpu().data.numpy()
+        inst_feat[i] = instDis
+        label_list[i] = labels
+        print('encoding image {} is finished'.format(str(i)))
+
+    return inst_feat, label_list
 
 if __name__ == '__main__':
     main()
