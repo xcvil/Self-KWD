@@ -44,6 +44,11 @@ parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
 parser.add_argument('--save-dir', default='', type=str, metavar='PATH',
                     help='path to save checkpoint (default: none)')
+parser.add_argument('-b', '--batch-size', default=256, type=int,
+                    metavar='N',
+                    help='mini-batch size (default: 256), this is the total '
+                         'batch size of all GPUs on the current node when '
+                         'using Data Parallel or Distributed Data Parallel')
 
 # options for mix precision training
 parser.add_argument('--amp-opt-level', type=str, default='O0', choices=['O0', 'O1', 'O2'],
@@ -214,3 +219,6 @@ def knn_predict(feature, feature_bank, feature_labels, classes, knn_k, knn_t):
 
     pred_labels = pred_scores.argsort(dim=-1, descending=True)
     return pred_labels
+
+if __name__ == '__main__':
+    main()
