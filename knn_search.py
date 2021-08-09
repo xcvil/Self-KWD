@@ -124,7 +124,7 @@ parser.add_argument('--amp-opt-level', type=str, default='O0', choices=['O0', 'O
                     help='mixed precision opt level, if O0, no amp is used')
 
 # knn monitor
-parser.add_argument('--knn-k', default=200, type=int, help='k in kNN monitor')
+parser.add_argument('--knn-k', default=20, type=int, help='k in kNN monitor')
 parser.add_argument('--knn-t', default=0.1, type=float, help='softmax temperature in kNN monitor; could be different with moco-t')
 parser.add_argument('--knn-data', default='', type=str, metavar='PATH',
                     help='path to dataset of KNN')
