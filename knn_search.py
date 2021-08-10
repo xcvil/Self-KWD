@@ -98,7 +98,16 @@ def main_worker(args):
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
-            model.load_state_dict(checkpoint['state_dict'])
+
+            # rename moco pre-trained keys
+            state_dict = checkpoint['state_dict']
+            for k in list(state_dict.keys()):
+                # retain only encoder_q up to before the embedding layer
+                state_dict[k[len("module."):]] = state_dict[k]
+                # delete renamed or unused k
+                del state_dict[k]
+
+            model.load_state_dict(state_dict)
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
