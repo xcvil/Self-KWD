@@ -212,8 +212,7 @@ def encode(train_loader, model, args):
     for i, (images, labels) in enumerate(train_loader):
         # measure data loading time
 
-        if args.gpu is not None:
-            images = images.cuda(args.gpu, non_blocking=True)
+        images = images.cuda(non_blocking=True)
 
         # compute output
         feature = model(images)
