@@ -133,7 +133,7 @@ def main_worker(args):
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=2,
                                               pin_memory=True)
 
-    instfe, labelfe = encode(test_loader, model.module.encoder_q, args)
+    instfe, labelfe = encode(test_loader, model.encoder_q, args)
     np.save(args.save_dir + 'inst_feat.npy', instfe)
     np.save(args.save_dir + 'label.npy', labelfe)
 
@@ -142,7 +142,7 @@ def main_worker(args):
 
     for i in range(0,600):
         args.knn_k += 1
-        test_acc_1 = test(model.module.encoder_q, memory_loader, test_loader, i, args)
+        test_acc_1 = test(model.encoder_q, memory_loader, test_loader, i, args)
         results['knn-k'].append(args.knn_k)
         results['test_acc@1'].append(test_acc_1)
         # save statistics
