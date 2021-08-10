@@ -77,20 +77,6 @@ def main():
         json.dump(vars(args), f, indent=2)
     print("Full config saved to {}".format(path))
 
-    if args.seed is not None:
-        random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        cudnn.deterministic = True
-        warnings.warn('You have chosen to seed training. '
-                      'This will turn on the CUDNN deterministic setting, '
-                      'which can slow down your training considerably! '
-                      'You may see unexpected behavior when restarting '
-                      'from checkpoints.')
-
-    if args.gpu is not None:
-        warnings.warn('You have chosen a specific GPU. This will completely '
-                      'disable data parallelism.')
-
     ngpus_per_node = torch.cuda.device_count()
     print('there is/are {} GPUs per nodes'.format(ngpus_per_node))
     # Simply call main_worker function
