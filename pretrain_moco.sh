@@ -1,4 +1,4 @@
-lr=0.2
+lr=0.1
 CUDA_VISIBLE_DEVICES=0 \
 python main_moco.py \
   -a resnet50 \
