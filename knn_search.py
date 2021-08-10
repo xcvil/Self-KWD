@@ -92,7 +92,7 @@ def main_worker(args):
     else:
         model = builder.MoCo(models.__dict__[args.arch],
                              args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
-
+    model.cuda()
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
