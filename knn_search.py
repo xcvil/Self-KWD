@@ -34,53 +34,19 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: resnet50)')
-parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
-                    help='number of data loading workers (default: 32)')
-parser.add_argument('--epochs', default=200, type=int, metavar='N',
-                    help='number of total epochs to run')
-parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
-                    help='manual epoch number (useful on restarts)')
 parser.add_argument('-b', '--batch-size', default=256, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
                          'using Data Parallel or Distributed Data Parallel')
-parser.add_argument('--lr', '--learning-rate', default=0.03, type=float,
-                    metavar='LR', help='initial learning rate', dest='lr')
-parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
-                    help='momentum of SGD solver')
-parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
-                    metavar='W', help='weight decay (default: 1e-4)',
-                    dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=10, type=int,
-                    metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
-parser.add_argument('--world-size', default=-1, type=int,
-                    help='number of nodes for distributed training')
-parser.add_argument('--rank', default=-1, type=int,
-                    help='node rank for distributed training')
-parser.add_argument('--dist-url', default=None, type=str,
-                    help='url used to set up distributed training')
-parser.add_argument('--dist-backend', default='nccl', type=str,
-                    help='distributed backend')
-parser.add_argument('--seed', default=None, type=int,
-                    help='seed for initializing training. ')
-parser.add_argument('--gpu', default=1, type=int,
-                    help='GPU id to use.')
-parser.add_argument('--multiprocessing-distributed', action='store_true',
-                    help='Use multi-processing distributed training to launch '
-                         'N processes per node, which has N GPUs. This is the '
-                         'fastest way to use PyTorch for either single node or '
-                         'multi node data parallel training')
 parser.add_argument('--save-dir', default='', type=str, metavar='PATH',
                     help='path to save checkpoint (default: none)')
 
 # moco specific configs:
 parser.add_argument('--bimoco', action='store_true',
                     help='use two branches MoCo')
-parser.add_argument('--bimoco-gamma', default=0.5, type=float,
-                    help='fraction of MoCo v2 loss')
 parser.add_argument('--moco-dim', default=128, type=int,
                     help='feature dimension (default: 128)')
 parser.add_argument('--moco-k', default=65536, type=int,
@@ -93,24 +59,6 @@ parser.add_argument('--moco-t', default=0.07, type=float,
 # options for moco v2
 parser.add_argument('--mlp', action='store_true',
                     help='use mlp head')
-parser.add_argument('--mixup', action='store_true',
-                    help='use mixup data augmentation')
-parser.add_argument('--aug-color-only', action='store_true',
-                    help='use only color data augmentation')
-parser.add_argument('--aug-geo', action='store_true',
-                    help='use only geometric data augmentation')
-parser.add_argument('--geo-plus', action='store_true',
-                    help='use only geometric data augmentation')
-parser.add_argument('--cos', action='store_true',
-                    help='use cosine lr schedule')
-
-# MixUp augmentation configs:
-parser.add_argument('--mixup-p', default=None, type=float,
-                    help='the prob to apply a mixup aug in a certain iteration')
-parser.add_argument('--replace', action='store_true',
-                    help='whether replace the original loss with mixup loss or not')
-parser.add_argument('--rui', action='store_true',
-                    help='use Rui method')
 
 # knn monitor
 parser.add_argument('--knn-k', default=20, type=int, help='k in kNN monitor')
@@ -146,12 +94,10 @@ def main():
     ngpus_per_node = torch.cuda.device_count()
     print('there is/are {} GPUs per nodes'.format(ngpus_per_node))
     # Simply call main_worker function
-    main_worker(args.gpu, ngpus_per_node, args)
+    main_worker(args)
 
 
-def main_worker(gpu, ngpus_per_node, args):
-    args.gpu = gpu
-
+def main_worker(args):
     # create model
     print("=> creating model '{}'".format(args.arch))
     if args.bimoco:
@@ -161,25 +107,12 @@ def main_worker(gpu, ngpus_per_node, args):
         model = builder.MoCo(models.__dict__[args.arch],
                              args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
 
-    if args.gpu is not None:
-        torch.cuda.set_device(args.gpu)
-        model = torch.nn.parallel.DataParallel(model, device_ids=[args.gpu])
-    else:
-        model = model.cuda()
-
-
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
-            if args.gpu is None:
-                checkpoint = torch.load(args.resume)
-            else:
-                # Map model to be loaded to specified single gpu.
-                loc = 'cuda:{}'.format(args.gpu)
-                checkpoint = torch.load(args.resume, map_location=loc)
+            checkpoint = torch.load(args.resume)
             model.load_state_dict(checkpoint['state_dict'])
-            # optimizer = checkpoint['optimizer']
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
