@@ -1,6 +1,5 @@
 import argparse
 import builtins
-import math
 import os
 import random
 import warnings
@@ -9,7 +8,6 @@ import pandas as pd
 from tqdm import tqdm
 
 import torch
-import torch.nn as nn
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim
@@ -22,15 +20,9 @@ import torch.nn.functional as F
 import torch.distributed as dist
 import torch.multiprocessing as mp
 
-import moco.loader as loader
 import moco.builder as builder
 
 import json
-try:
-    # noinspection PyUnresolvedReferences
-    from apex import amp
-except ImportError:
-    amp = None
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -119,9 +111,6 @@ parser.add_argument('--replace', action='store_true',
                     help='whether replace the original loss with mixup loss or not')
 parser.add_argument('--rui', action='store_true',
                     help='use Rui method')
-# options for mix precision training
-parser.add_argument('--amp-opt-level', type=str, default='O0', choices=['O0', 'O1', 'O2'],
-                    help='mixed precision opt level, if O0, no amp is used')
 
 # knn monitor
 parser.add_argument('--knn-k', default=20, type=int, help='k in kNN monitor')
@@ -154,47 +143,15 @@ def main():
         warnings.warn('You have chosen a specific GPU. This will completely '
                       'disable data parallelism.')
 
-    if args.dist_url == "env://" and args.world_size == -1:
-        args.world_size = int(os.environ["WORLD_SIZE"])
-
-    args.distributed = args.world_size > 1 or args.multiprocessing_distributed
-    print('Using distributed training')
-
     ngpus_per_node = torch.cuda.device_count()
     print('there is/are {} GPUs per nodes'.format(ngpus_per_node))
-    if args.multiprocessing_distributed:
-        # Since we have ngpus_per_node processes per node, the total world_size
-        # needs to be adjusted accordingly
-        args.world_size = ngpus_per_node * args.world_size
-        # Use torch.multiprocessing.spawn to launch distributed processes: the
-        # main_worker process function
-        mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
-    else:
-        # Simply call main_worker function
-        main_worker(args.gpu, ngpus_per_node, args)
+    # Simply call main_worker function
+    main_worker(args.gpu, ngpus_per_node, args)
 
 
 def main_worker(gpu, ngpus_per_node, args):
     args.gpu = gpu
 
-    # suppress printing if not master
-    if args.multiprocessing_distributed and args.gpu != 0:
-        def print_pass(*args):
-            pass
-        builtins.print = print_pass
-
-    if args.gpu is not None:
-        print("Use GPU: {} for training".format(args.gpu))
-
-    if args.distributed:
-        if args.dist_url == "env://" and args.rank == -1:
-            args.rank = int(os.environ["RANK"])
-        if args.multiprocessing_distributed:
-            # For multiprocessing distributed training, rank needs to be the
-            # global rank among all the processes
-            args.rank = args.rank * ngpus_per_node + gpu
-        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
-                                world_size=args.world_size, rank=args.rank)
     # create model
     print("=> creating model '{}'".format(args.arch))
     if args.bimoco:
@@ -206,35 +163,10 @@ def main_worker(gpu, ngpus_per_node, args):
 
     if args.gpu is not None:
         torch.cuda.set_device(args.gpu)
-        model.cuda(args.gpu)
-
-    if args.distributed:
-        # For multiprocessing distributed, DistributedDataParallel constructor
-        # should always set the single device scope, otherwise,
-        # DistributedDataParallel will use all available devices.
-        if args.gpu is not None:
-            torch.cuda.set_device(args.gpu)
-            model.cuda(args.gpu)
-            # When using a single GPU per process and per
-            # DistributedDataParallel, we need to divide the batch size
-            # ourselves based on the total number of GPUs we have
-            args.batch_size = int(args.batch_size / ngpus_per_node)
-            args.workers = int((args.workers + ngpus_per_node - 1) / ngpus_per_node)
-            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-        else:
-            model.cuda()
-            # DistributedDataParallel will divide and allocate batch_size to all
-            # available GPUs if device_ids are not set
-            model = torch.nn.parallel.DistributedDataParallel(model)
-    elif args.gpu is not None:
-        torch.cuda.set_device(args.gpu)
-        model = model.cuda(args.gpu)
-        # comment out the following line for debugging
-        raise NotImplementedError("Only DistributedDataParallel is supported.")
+        model = torch.nn.parallel.DataParallel(model, device_ids=[args.gpu])
     else:
-        # AllGather implementation (batch shuffle, queue update, etc.) in
-        # this code only supports DistributedDataParallel.
-        raise NotImplementedError("Only DistributedDataParallel is supported.")
+        model = model.cuda()
+
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -248,8 +180,6 @@ def main_worker(gpu, ngpus_per_node, args):
                 checkpoint = torch.load(args.resume, map_location=loc)
             model.load_state_dict(checkpoint['state_dict'])
             # optimizer = checkpoint['optimizer']
-            if args.amp_opt_level != "O0" and checkpoint['args'].amp_opt_level != "O0":
-                amp.load_state_dict(checkpoint['amp'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
@@ -275,7 +205,7 @@ def main_worker(gpu, ngpus_per_node, args):
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=2,
                                               pin_memory=True)
 
-    instfe, labelfe = encode(test_loader, model, args)
+    instfe, labelfe = encode(test_loader, model.module.encoder_q, args)
     np.save(args.save_dir + 'inst_feat.npy', instfe)
     np.save(args.save_dir + 'label.npy', labelfe)
 
@@ -348,7 +278,7 @@ def encode(train_loader, model, args):
     # switch to train mode
     model.eval()
     num_data = len(train_loader)
-    inst_feat = np.zeros((num_data, 128, 1, 1)) # store the features
+    inst_feat = np.zeros((num_data, 128)) # store the features
     label_list = np.zeros((num_data,))
 
     for i, (images, labels) in enumerate(train_loader):
