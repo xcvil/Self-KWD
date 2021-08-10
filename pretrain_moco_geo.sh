@@ -9,7 +9,9 @@ python main_moco.py \
   --geo-plus --cos --mlp \
   --moco-t 0.2 \
   --amp-opt-level O1 \
+  --knn-k 20 \
+  --knn-t 0.02 \
   --knn-data "/home/xiaochen/KWD-LT-0.1" \
-  --save-dir "output/kuzikus/mocov2/moco-v2-geo-plus-epochs200/" \
+  --save-dir "output/kuzikus/mocov2/moco-v2-geo-plus-epochs200-LT/" \
   --dist-url 'tcp://localhost:10001' --multiprocessing-distributed --world-size 1 --rank 0 \
-  '/home/xiaochen/pretrain_dataset_256_seed11369'
+  '/home/xiaochen/KWD-LT/train'

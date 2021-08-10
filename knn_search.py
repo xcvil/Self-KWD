@@ -61,7 +61,7 @@ parser.add_argument('--mlp', action='store_true',
                     help='use mlp head')
 
 # knn monitor
-parser.add_argument('--knn-k', default=20, type=int, help='k in kNN monitor')
+parser.add_argument('--knn-k', default=1, type=int, help='k in kNN monitor')
 parser.add_argument('--knn-t', default=0.1, type=float, help='softmax temperature in kNN monitor; could be different with moco-t')
 parser.add_argument('--knn-data', default='', type=str, metavar='PATH',
                     help='path to dataset of KNN')
@@ -141,13 +141,13 @@ def main_worker(args):
     results = {'knn-k': [], 'test_acc@1': []}
 
     for i in range(0,600):
-        args.knn_k += 1
         test_acc_1 = test(model.encoder_q, memory_loader, test_loader, i, args)
         results['knn-k'].append(args.knn_k)
         results['test_acc@1'].append(test_acc_1)
         # save statistics
         data_frame = pd.DataFrame(data=results, index=range(1, i + 2))
         data_frame.to_csv(args.save_dir + 'log.csv', index_label='epoch')
+        args.knn_k += 1
 
 # test using a knn monitor
 def test(model, memory_data_loader, test_data_loader, epoch, args):
