@@ -14,6 +14,6 @@ python main_moco.py \
   --knn-k 20 \
   --knn-t 0.02 \
   --knn-data "/home/xiaochen/KWD-LT-0.1" \
-  --save-dir "output/kuzikus/mocov2/bimoco-gamma0.9-mixup0.3-rui-replace-epochs200/" \
+  --save-dir "output/kuzikus/mocov2/bimoco-gamma0.9-mixup0.3-rui-replace-epochs200-LT/" \
   --dist-url 'tcp://localhost:10003' --multiprocessing-distributed --world-size 1 --rank 0 \
   '/home/xiaochen/KWD-LT/train'

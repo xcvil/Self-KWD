@@ -61,6 +61,7 @@ parser.add_argument('--mlp', action='store_true',
                     help='use mlp head')
 
 # knn monitor
+parser.add_argument('--knn-search', action='store_true',help='whether to do knn search')
 parser.add_argument('--knn-k', default=1, type=int, help='k in kNN monitor')
 parser.add_argument('--knn-t', default=0.1, type=float, help='softmax temperature in kNN monitor; could be different with moco-t')
 parser.add_argument('--knn-data', default='', type=str, metavar='PATH',
@@ -137,17 +138,17 @@ def main_worker(args):
     np.save(args.save_dir + 'inst_feat.npy', instfe)
     np.save(args.save_dir + 'label.npy', labelfe)
 
-    # logging
-    results = {'knn-k': [], 'test_acc@1': []}
-
-    for i in range(0,600):
-        test_acc_1 = test(model.encoder_q, memory_loader, test_loader, i, args)
-        results['knn-k'].append(args.knn_k)
-        results['test_acc@1'].append(test_acc_1)
-        # save statistics
-        data_frame = pd.DataFrame(data=results, index=range(1, i + 2))
-        data_frame.to_csv(args.save_dir + 'log.csv', index_label='epoch')
-        args.knn_k += 1
+    if args.knn_search:
+        # logging
+        results = {'knn-k': [], 'test_acc@1': []}
+        for i in range(0,600):
+            test_acc_1 = test(model.encoder_q, memory_loader, test_loader, i, args)
+            results['knn-k'].append(args.knn_k)
+            results['test_acc@1'].append(test_acc_1)
+            # save statistics
+            data_frame = pd.DataFrame(data=results, index=range(1, i + 2))
+            data_frame.to_csv(args.save_dir + 'log.csv', index_label='epoch')
+            args.knn_k += 1
 
 # test using a knn monitor
 def test(model, memory_data_loader, test_data_loader, epoch, args):
@@ -208,20 +209,19 @@ def encode(train_loader, model, args):
     num_data = len(train_loader)
     inst_feat = np.zeros((num_data, 128)) # store the features
     label_list = np.zeros((num_data,))
-
-    for i, (images, labels) in enumerate(train_loader):
-        # measure data loading time
-
-        images = images.cuda(non_blocking=True)
-
-        # compute output
-        feature = model(images)
-        feature = F.normalize(feature, dim=1)
-        instDis = feature.cpu().data.numpy()
-        inst_feat[i] = instDis
-        label_list[i] = labels
-        print('encoding image {} is finished'.format(str(i)))
-
+    with torch.no_grad():
+        # generate feature bank
+        for i, (images, labels) in tqdm(enumerate(train_loader), desc='Feature extracting'):
+        # for i, (images, labels) in enumerate(train_loader):
+            # feature = model(data.cuda(non_blocking=True))
+            # feature = F.normalize(feature, dim=1)
+            # feature_bank.append(feature)
+            feature = model(images.cuda(non_blocking=True))
+            feature = F.normalize(feature, dim=1)
+            instDis = feature.cpu().data.numpy()
+            inst_feat[i] = instDis
+            label_list[i] = labels
+            # print('encoding image {} is finished'.format(str(i)))
     return inst_feat, label_list
 
 if __name__ == '__main__':
